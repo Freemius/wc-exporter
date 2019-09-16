@@ -298,7 +298,7 @@
                                      $order->get_id() != $s->get_parent_id()
                                 ) {
                                     // Skip non parent subscriptions.
-                                    return null;
+                                    continue;
                                 }
 
                                 $subscription_id = $s->get_id();
