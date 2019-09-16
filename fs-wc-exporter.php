@@ -133,6 +133,13 @@
                 ) );
             }
 
+            if ( empty( $_COOKIE['XDEBUG_SESSION'] ) ) {
+                $cookies[] = new WP_Http_Cookie( array(
+                    'name'  => 'XDEBUG_SESSION',
+                    'value' => 'PHPSTORM',
+                ) );
+            }
+
             wp_remote_get(
                 $export_url,
                 array(
