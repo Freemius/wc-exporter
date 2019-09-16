@@ -384,7 +384,14 @@
                         $record->local_product_id    = $resource->parent_id;
                         $record->local_product_title = $resource->product_title;
 
+                        $license_keys_hash = array();
                         foreach ( $licenses as $license ) {
+                            if ( isset( $license_keys_hash[ $license['key'] ] ) ) {
+                                continue;
+                            }
+
+                            $license_keys_hash[ $license['key'] ] = true;
+
                             $record->set_license( $license );
 
                             $this->output_record( $record, $fp, $offset + $i );
