@@ -120,6 +120,8 @@
                 self::GUID_TRANSIENT_NAME => $guid,
                 'offset'                  => $offset,
                 'limit'                   => $limit,
+                'XDEBUG_SESSION_START'    => rand( 0, 9999999 ),
+                'XDEBUG_SESSION'          => 'PHPSTORM',
             ), $this->get_current_url() );
 
             // Add cookies to trigger request with same user access permissions.
