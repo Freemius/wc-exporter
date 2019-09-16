@@ -97,15 +97,24 @@
                     max( $_GET['offset'], 0 ) :
                     0;
 
+                $index = ( ! empty( $_GET['index'] ) && is_numeric( $_GET['index'] ) ) ?
+                    max( $_GET['index'], 0 ) :
+                    $offset;
+
                 $limit = ( ! empty( $_GET['limit'] ) && is_numeric( $_GET['limit'] ) ) ?
                     min( $_GET['limit'], self::MAX_LICENSES_PER_EXECUTION ) :
                     self::LICENSES_PER_EXECUTION;
 
-                $exported_count = $this->do_export( $csv_export_path, $offset, $limit );
+                $result = $this->do_export(
+                    $csv_export_path,
+                    $offset,
+                    $limit,
+                    $index
+                );
 
-                if ( $exported_count == $limit ) {
+                if ( $result['orders_count'] == $limit ) {
                     // Continue with non-blocking data export.
-                    $this->spawn_export( $guid, $offset + $limit, $limit );
+                    $this->spawn_export( $guid, $offset + $limit, $limit, $result['index'] );
                 }
             }
         }
@@ -114,12 +123,19 @@
          * @param string $guid
          * @param int    $offset
          * @param int    $limit
+         * @param int    $index
          */
-        private function spawn_export( $guid, $offset = 0, $limit = self::LICENSES_PER_EXECUTION ) {
+        private function spawn_export(
+            $guid,
+            $offset = 0,
+            $limit = self::LICENSES_PER_EXECUTION,
+            $index = 0
+        ) {
             $export_url = add_query_arg( array(
                 self::GUID_TRANSIENT_NAME => $guid,
                 'offset'                  => $offset,
                 'limit'                   => $limit,
+                'index'                   => $index,
                 'XDEBUG_SESSION_START'    => rand( 0, 9999999 ),
                 'XDEBUG_SESSION'          => 'PHPSTORM',
             ), $this->get_current_url() );
@@ -163,13 +179,18 @@
          * @param string $csv_export_path
          * @param int    $offset
          * @param int    $limit
+         * @param int    $index
          *
-         * @return int Number of exported licenses.
+         * @return array {
+         * @var int      $orders_count Number of exported orders.
+         * @var int      $index        The index of the last exported license.
+         * }
          */
         private function do_export(
             $csv_export_path,
             $offset = 0,
-            $limit = self::LICENSES_PER_EXECUTION
+            $limit = self::LICENSES_PER_EXECUTION,
+            $index = 0
         ) {
             // Remove execution time limit.
             ini_set( 'max_execution_time', 0 );
@@ -189,9 +210,9 @@
                 'order'  => 'DESC',
             ) );
 
-            try {
-                $i = 0;
+            $order_index = $offset - 1;
 
+            try {
                 /**
                  * + guest purchase (no user ID) - 1569528, 1327631
                  *
@@ -210,7 +231,9 @@
                  * @var WC_Order $order
                  */
                 foreach ( $orders as $order ) {
-                    if ($order instanceof WC_Order_Refund) {
+                    $order_index ++;
+
+                    if ( $order instanceof WC_Order_Refund ) {
                         // Ignore refunds.
                         continue;
                     }
@@ -394,9 +417,9 @@
 
                             $record->set_license( $license );
 
-                            $this->output_record( $record, $fp, $offset + $i );
+                            $this->output_record( $record, $fp, $index, $order_index );
 
-                            $i ++;
+                            $index ++;
                         }
                     }
 
@@ -408,9 +431,9 @@
                             foreach ( $bundle_data['licenses'] as $license ) {
                                 $record->set_license( $license );
 
-                                $this->output_record( $record, $fp, $offset + $i );
+                                $this->output_record( $record, $fp, $index, $order_index );
 
-                                $i ++;
+                                $index ++;
                             }
                         }
                     }
@@ -421,7 +444,10 @@
 
             fclose( $fp );
 
-            return count( $orders );
+            return array(
+                'orders_count' => count( $orders ),
+                'index'        => $index,
+            );
         }
 
         function insufficient_file_permissions_notice() {
@@ -593,13 +619,14 @@
          * @param \FS_CSV_Order_License $record
          * @param resource              $csv_file_pointer
          * @param int                   $index
+         * @param int                   $order_index
          */
-        private function output_record( FS_CSV_Order_License $record, $csv_file_pointer, $index ) {
-            fputcsv( $csv_file_pointer, array_values( $record->to_array( $index ) ) );
+        private function output_record( FS_CSV_Order_License $record, $csv_file_pointer, $index, $order_index ) {
+            fputcsv( $csv_file_pointer, array_values( $record->to_array( $index, $order_index ) ) );
 
             if ( self::DEBUG ) {
                 // Debugging.
-                echo json_encode( $record->to_array( $index ), JSON_PRETTY_PRINT );
+                echo json_encode( $record->to_array( $index, $order_index ), JSON_PRETTY_PRINT );
 
                 echo "<br><br>";
             }

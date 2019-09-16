@@ -43,7 +43,7 @@
             $this->license_expires_at = $license['expiration'];
         }
 
-        public function to_array( $count = 0 ) {
+        public function to_array( $count = 0, $order_index = 0 ) {
             /*$utf8_encoded = array(
                 'user_firstname'   => '',
                 'user_lastname'    => '',
@@ -64,6 +64,7 @@
 
             return array(
                 'index'                => $count,
+                'order_index'          => $order_index,
                 'order_id'             => $this->order_id,
 
                 // User.
