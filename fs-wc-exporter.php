@@ -558,9 +558,19 @@
             if ( ! empty( self::OLD_API_KEYS_END_DATE ) &&
                  $order->get_date_created()->getTimestamp() < strtotime( self::OLD_API_KEYS_END_DATE )
             ) {
+                global $wpdb;
+
+                $associated_api_key = $wpdb->get_var( $wpdb->prepare( "
+SELECT
+    associated_api_key
+FROM 
+    {$wpdb->prefix}wc_am_associated_api_key
+WHERE
+    api_resource_id = %d", $resource->api_resource_id ) );
+
                 // Add order key (legacy licenses).
                 $master_licenses[] = array(
-                    'key'        => $order->get_order_key(),
+                    'key'        => $associated_api_key, //$order->get_order_key(),
                     'quota'      => $activations,
                     'expiration' => $expiration,
                 );
